@@ -5,13 +5,13 @@ using TechTalk.SpecFlow;
 namespace SpaceBattleTests;
 
 [Binding]
-public class Move
+public class MoveTest
 {
     private readonly Mock<IMovable> _movable;
 
     private Action commandExecutionLambda;
 
-    public Move()
+    public MoveTest()
     {
         _movable = new Mock<IMovable>();
 
