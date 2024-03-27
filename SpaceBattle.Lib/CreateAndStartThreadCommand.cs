@@ -1,23 +1,23 @@
 ﻿using System.Collections.Concurrent;
-using Hwdtech;
 
 namespace SpaceBattle.Lib;
 
 public class CreateAndStartThreadCommand : ICommand
 {
-    private readonly int _id;
-    public CreateAndStartThreadCommand(int id)
+    private readonly BlockingCollection<ICommand> _queue;
+    private readonly ServerThread _st;
+    public CreateAndStartThreadCommand(BlockingCollection<ICommand> queue)
     {
-        _id = id;
+        _queue = queue;
+        _st = new ServerThread(_queue);
     }
     public void Execute()
     {
-        var queue = new BlockingCollection<ICommand>(10);
-        IoC.Resolve<ConcurrentDictionary<int, BlockingCollection<ICommand>>>("Queue List").TryAdd(_id, queue);
+        _st.Start();
+    }
 
-        var st = new ServerThread(queue);
-        IoC.Resolve<ConcurrentDictionary<int, ServerThread>>("ServerThread List").TryAdd(_id, st);
-
-        st.Start();
+    public ServerThread GetServerThread()
+    {
+        return _st;
     }
 }
