@@ -1,19 +1,18 @@
 ﻿using System.Collections.Concurrent;
-using Hwdtech;
 
 namespace SpaceBattle.Lib;
 
 public class SendCommand : ICommand
 {
-    private readonly int _id;
+    private readonly BlockingCollection<ICommand> _queue;
     private readonly ICommand _cmd;
-    public SendCommand(int id, ICommand cmd)
+    public SendCommand(BlockingCollection<ICommand> queue, ICommand cmd)
     {
-        _id = id;
+        _queue = queue;
         _cmd = cmd;
     }
     public void Execute()
     {
-        IoC.Resolve<ConcurrentDictionary<int, BlockingCollection<ICommand>>>("Queue List")[_id].Add(_cmd);
+        _queue.Add(_cmd);
     }
 }

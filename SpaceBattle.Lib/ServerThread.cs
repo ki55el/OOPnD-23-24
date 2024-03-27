@@ -9,6 +9,8 @@ public class ServerThread
     private Action _behavior;
     private readonly Thread _thread;
     private bool _stop = false;
+    private Action _before = () => { };
+    private Action _after = () => { };
     public ServerThread(BlockingCollection<ICommand> queue)
     {
         _queue = queue;
@@ -26,10 +28,13 @@ public class ServerThread
         };
         _thread = new Thread(() =>
             {
+                _before();
                 while (!_stop)
                 {
                     _behavior();
                 }
+
+                _after();
             }
         );
     }
@@ -47,6 +52,21 @@ public class ServerThread
     internal void SetBehavior(Action behavior)
     {
         _behavior = behavior;
+    }
+
+    public void Wait(int ms = 1000)
+    {
+        _thread.Join(ms);
+    }
+
+    public void SetBefore(Action before)
+    {
+        _before = before;
+    }
+
+    public void SetAfter(Action after)
+    {
+        _after = after;
     }
 
     internal BlockingCollection<ICommand> GetQueue()

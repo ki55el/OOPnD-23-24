@@ -33,8 +33,14 @@ public class ServerThreadTest
             (object[] args) =>
             {
                 var id = (int)args[0];
-                var act = () => { };
+                var queue = new BlockingCollection<ICommand>(10);
+                IoC.Resolve<ConcurrentDictionary<int, BlockingCollection<ICommand>>>("Queue List").TryAdd(id, queue);
 
+                var createAndStartThreadCommand = new CreateAndStartThreadCommand(queue);
+                var st = createAndStartThreadCommand.GetServerThread();
+                IoC.Resolve<ConcurrentDictionary<int, ServerThread>>("ServerThread List").TryAdd(id, st);
+
+                var act = () => { };
                 if (args.Length == 2 && args[1].GetType() == typeof(Action))
                 {
                     act = (Action)args[1];
@@ -42,8 +48,8 @@ public class ServerThreadTest
 
                 return new ActionCommand(() =>
                 {
-                    new CreateAndStartThreadCommand(id).Execute();
-                    new ActionCommand(act).Execute();
+                    st.SetBefore(act);
+                    createAndStartThreadCommand.Execute();
                 });
             }
         ).Execute();
@@ -52,11 +58,12 @@ public class ServerThreadTest
             (object[] args) =>
             {
                 var id = (int)args[0];
+                var queue = IoC.Resolve<ConcurrentDictionary<int, BlockingCollection<ICommand>>>("Queue List")[id];
                 var cmd = (ICommand)args[1];
 
                 return new ActionCommand(() =>
                 {
-                    new SendCommand(id, cmd).Execute();
+                    new SendCommand(queue, cmd).Execute();
                 });
             }
         ).Execute();
@@ -75,8 +82,8 @@ public class ServerThreadTest
 
                 return new ActionCommand(() =>
                 {
+                    st.SetAfter(act);
                     new HardStopCommand(st).Execute();
-                    new ActionCommand(act).Execute();
                 });
             }
         ).Execute();
@@ -95,8 +102,8 @@ public class ServerThreadTest
 
                 return new ActionCommand(() =>
                 {
+                    st.SetAfter(act);
                     new SoftStopCommand(st).Execute();
-                    new ActionCommand(act).Execute();
                 });
             }
         ).Execute();
@@ -116,10 +123,8 @@ public class ServerThreadTest
             id
         ).Execute();
 
-        var mre = new ManualResetEvent(false);
         var hs = IoC.Resolve<ICommand>("Hard Stop The Thread",
-            id,
-            () => { mre.Set(); }
+            id
         );
 
         var cmd = new Mock<ICommand>();
@@ -129,7 +134,8 @@ public class ServerThreadTest
         IoC.Resolve<ICommand>("Send Command", id, hs).Execute();
         IoC.Resolve<ICommand>("Send Command", id, cmd.Object).Execute();
 
-        mre.WaitOne();
+        var st = IoC.Resolve<ConcurrentDictionary<int, ServerThread>>("ServerThread List")[id];
+        st.Wait();
 
         cmd.Verify(x => x.Execute(), Times.Once);
 
@@ -151,15 +157,14 @@ public class ServerThreadTest
             id
         ).Execute();
 
-        var mre = new ManualResetEvent(false);
         var hs = IoC.Resolve<ICommand>("Hard Stop The Thread",
-            id,
-            () => { mre.Set(); }
+            id
         );
 
         IoC.Resolve<ICommand>("Send Command", id, hs).Execute();
 
-        mre.WaitOne();
+        var st = IoC.Resolve<ConcurrentDictionary<int, ServerThread>>("ServerThread List")[id];
+        st.Wait();
 
         Assert.Throws<Exception>(hs.Execute);
 
@@ -181,10 +186,8 @@ public class ServerThreadTest
             id
         ).Execute();
 
-        var mre = new ManualResetEvent(false);
         var ss = IoC.Resolve<ICommand>("Soft Stop The Thread",
-            id,
-            () => { mre.Set(); }
+            id
         );
 
         var cmd = new Mock<ICommand>();
@@ -194,7 +197,8 @@ public class ServerThreadTest
         IoC.Resolve<ICommand>("Send Command", id, ss).Execute();
         IoC.Resolve<ICommand>("Send Command", id, cmd.Object).Execute();
 
-        mre.WaitOne();
+        var st = IoC.Resolve<ConcurrentDictionary<int, ServerThread>>("ServerThread List")[id];
+        st.Wait();
 
         cmd.Verify(x => x.Execute(), Times.AtLeast(2));
 
@@ -229,10 +233,8 @@ public class ServerThreadTest
             id
         ).Execute();
 
-        var mre = new ManualResetEvent(false);
         var ss = IoC.Resolve<ICommand>("Soft Stop The Thread",
-            id,
-            () => { mre.Set(); }
+            id
         );
 
         var cmd = new Mock<ICommand>();
@@ -247,7 +249,8 @@ public class ServerThreadTest
         IoC.Resolve<ICommand>("Send Command", id, ss).Execute();
         IoC.Resolve<ICommand>("Send Command", id, cmdEx.Object).Execute();
 
-        mre.WaitOne();
+        var st = IoC.Resolve<ConcurrentDictionary<int, ServerThread>>("ServerThread List")[id];
+        st.Wait();
 
         Assert.Throws<Exception>(() => ss.Execute());
 
@@ -269,15 +272,14 @@ public class ServerThreadTest
             id
         ).Execute();
 
-        var mre = new ManualResetEvent(false);
         var ss = IoC.Resolve<ICommand>("Soft Stop The Thread",
-            id,
-            () => { mre.Set(); }
+            id
         );
 
         IoC.Resolve<ICommand>("Send Command", id, ss).Execute();
 
-        mre.WaitOne();
+        var st = IoC.Resolve<ConcurrentDictionary<int, ServerThread>>("ServerThread List")[id];
+        st.Wait();
 
         Assert.Throws<Exception>(ss.Execute);
 
