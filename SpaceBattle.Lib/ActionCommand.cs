@@ -1,4 +1,4 @@
-﻿using SpaceBattle.Lib;
+﻿namespace SpaceBattle.Lib;
 
 public class ActionCommand : ICommand
 {
