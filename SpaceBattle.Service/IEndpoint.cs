@@ -6,13 +6,13 @@ namespace SpaceBattle.Service;
 
 [ServiceContract]
 [OpenApiBasePath("/api")]
-internal interface IEndpoint
+public interface IEndpoint
 {
     [OperationContract]
     [WebInvoke(Method = "POST", UriTemplate = "/body")]
     [OpenApiTag("Tag")]
     [OpenApiResponse(ContentTypes = new[] { "application/json" }, Description = "Success", StatusCode = HttpStatusCode.Accepted, Type = typeof(MessageContract))]
 
-    int POST(
+    void POST(
         [OpenApiParameter(ContentTypes = new[] { "application/json" })] MessageContract param);
 }

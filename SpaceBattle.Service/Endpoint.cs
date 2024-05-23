@@ -1,25 +1,21 @@
-﻿using System.Collections.Concurrent;
-using Hwdtech;
-using SpaceBattle.Lib;
+﻿using Hwdtech;
 
 namespace SpaceBattle.Service;
 
 [ServiceBehavior(IncludeExceptionDetailInFaults = true)]
 public class Endpoint : IEndpoint
 {
-    public int POST(MessageContract param)
+    public void POST(MessageContract param)
     {
         try
         {
-            var q = IoC.Resolve<ConcurrentDictionary<int, BlockingCollection<Lib.ICommand>>>("Queue List")[param.GameID];
-            var cmd = IoC.Resolve<Lib.ICommand>("Create Command", param.Type, param.GameItemID, param.Properties);
-            new SendCommand(q, cmd).Execute();
-
-            return 202;
+            var thread_id = IoC.Resolve<string>("Get Thread ID by Game ID", param.GameID);
+            var cmd = IoC.Resolve<Lib.ICommand>("Create Command", param);
+            IoC.Resolve<Lib.ICommand>("Send Command", thread_id, cmd).Execute();
         }
-        catch
+        catch (Exception ex)
         {
-            return 400;
+            IoC.Resolve<Lib.ICommand>("HttpController.ExceptionHandler", param, ex).Execute();
         }
     }
 }
