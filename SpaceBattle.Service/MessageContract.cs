@@ -13,5 +13,5 @@ public class MessageContract
     public int GameItemID { get; set; }
 
     [DataMember(Name = "Properties", Order = 4)]
-    public IDictionary<string, object> Properties { get; set; }
+    public IDictionary<string, object>? Properties { get; set; }
 }
